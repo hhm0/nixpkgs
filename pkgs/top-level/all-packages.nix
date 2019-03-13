@@ -1875,6 +1875,8 @@ in
 
   ccze = callPackage ../tools/misc/ccze { };
 
+  cddisasm = callPackage ../tools/cd-dvd/cddisasm { };
+
   cdecl = callPackage ../development/tools/cdecl { };
 
   cdi2iso = callPackage ../tools/cd-dvd/cdi2iso { };
