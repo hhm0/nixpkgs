@@ -5301,6 +5301,8 @@ in
 
   routino = callPackage ../tools/misc/routino { };
 
+  rosie = callPackage ../tools/text/rosie { };
+
   rq = callPackage ../development/tools/rq {
     v8 = v8.override { static = true; };
   };
