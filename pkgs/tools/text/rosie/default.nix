@@ -32,7 +32,7 @@ stdenv.mkDerivation rec {
     rmdir -v "$out/lib/rosie/doc"
     mv -v "$out/lib/rosie/extra/extra/examples" "$doc/share/rosie/examples"
     mv -v "$out/include" "$doc/share/rosie/librosie.h"
-    rm -v "$out/lib/rosie/"{build.log,LICENSE,VERSION}
+    rm -v "$out/lib/rosie/"{build.log,LICENSE}
     rm -vr "$out/lib/rosie/extra/extra/" # NOTE: new useful things may be added here, so check occasionally
     rmdir -v "$out/lib/rosie/extra"
   '';
