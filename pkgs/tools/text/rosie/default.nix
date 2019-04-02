@@ -25,6 +25,7 @@ stdenv.mkDerivation rec {
     mkdir -v -p "$out/share"
     mkdir -v -p "$out/share/emacs"
     mv -v "$out/lib/rosie/extra/extra/vim" "$out/share/vim-plugins"
+    #mv -v "$out/lib/rosie/extra/extra/vim/"* "$out/"
     mv -v "$out/lib/rosie/extra/extra/emacs" "$out/share/emacs/site-lisp"
     mkdir -p "$doc/share/rosie"
     mv -v "$out/lib/rosie/"{CHANGELOG,CONTRIBUTORS,README} "$doc/share/rosie/"
