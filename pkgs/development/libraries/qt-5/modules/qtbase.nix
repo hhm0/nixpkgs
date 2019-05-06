@@ -266,15 +266,18 @@ stdenv.mkDerivation {
     ++ (
       if (!stdenv.hostPlatform.isx86_64)
       then [ "-no-sse2" ]
-      else lib.optional (compareVersion "5.9.0" >= 0) [ "-sse2" ]
+      else lib.optionals (compareVersion "5.9.0" >= 0) {
+        "default"        = [ "-sse2" "-no-sse3" "-no-ssse3" "-no-sse4.1" "-no-sse4.2" "-no-avx" "-no-avx2" ];
+        "westmere"       = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2" "-no-avx" "-no-avx2" ];
+        "sandybridge"    = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx" "-no-avx2" ];
+        "ivybridge"      = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx" "-no-avx2" ];
+        "haswell"        = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx"    "-avx2" ];
+        "broadwell"      = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx"    "-avx2" ];
+        "skylake"        = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx"    "-avx2" ];
+        "skylake-avx512" = [ "-sse2"    "-sse3"    "-ssse3"    "-sse4.1"    "-sse4.2"    "-avx"    "-avx2" ];
+      }.${stdenv.hostPlatform.platform.gcc.arch or "default"}
     )
     ++ [
-      "-no-sse3"
-      "-no-ssse3"
-      "-no-sse4.1"
-      "-no-sse4.2"
-      "-no-avx"
-      "-no-avx2"
       "-no-mips_dsp"
       "-no-mips_dspr2"
     ]
@@ -301,7 +304,6 @@ stdenv.mkDerivation {
       then
         [
           "-platform macx-clang"
-          "-no-use-gold-linker"
           "-no-fontconfig"
           "-qt-freetype"
           "-qt-libpng"
@@ -329,9 +331,6 @@ stdenv.mkDerivation {
           "-glib"
           "-system-libjpeg"
           "-system-libpng"
-          # gold linker of binutils 2.28 generates duplicate symbols
-          # TODO: remove for newer version of binutils
-          "-no-use-gold-linker"
         ]
         ++ lib.optional withGtk3 "-gtk"
         ++ lib.optional (compareVersion "5.9.0" >= 0) "-inotify"

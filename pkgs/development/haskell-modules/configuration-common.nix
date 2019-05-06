@@ -48,7 +48,6 @@ self: super: {
 
   # Break infinite recursions.
   attoparsec-varword = super.attoparsec-varword.override { bytestring-builder-varword = dontCheck self.bytestring-builder-varword; };
-  clock = dontCheck super.clock;
   Dust-crypto = dontCheck super.Dust-crypto;
   hasql-postgres = dontCheck super.hasql-postgres;
   hspec-core = super.hspec-core.override { silently = dontCheck self.silently; temporary = dontCheck self.temporary; };
@@ -85,7 +84,7 @@ self: super: {
       name = "git-annex-${super.git-annex.version}-src";
       url = "git://git-annex.branchable.com/";
       rev = "refs/tags/" + super.git-annex.version;
-      sha256 = "1v2v6cwy957y5rgclb66ia7bl5j5mx291s3lh2swa39q3420m6v0";
+      sha256 = "08gw3b5gbbxs2dr3b4zf9xsvhbvpqjj4ikmvzmcvs3fh1q65xbgl";
     };
   }).override {
     dbus = if pkgs.stdenv.isLinux then self.dbus else null;
@@ -872,8 +871,17 @@ self: super: {
   # https://github.com/takano-akio/filelock/issues/5
   filelock = dontCheck super.filelock;
 
-  # cryptol-2.5.0 doesn't want happy 1.19.6+.
-  cryptol = super.cryptol.override { happy = self.happy_1_19_5; };
+  # Wrap the generated binaries to include their run-time dependencies in
+  # $PATH. Also, cryptol needs a version of sbl that's newer than what we have
+  # in LTS-13.x.
+  cryptol = overrideCabal (super.cryptol.override { sbv = self.sbv_8_2; }) (drv: {
+    buildTools = drv.buildTools or [] ++ [ pkgs.makeWrapper ];
+    postInstall = drv.postInstall or "" + ''
+      for b in $out/bin/cryptol $out/bin/cryptol-html; do
+        wrapProgram $b --prefix 'PATH' ':' "${pkgs.lib.getBin pkgs.z3}/bin"
+      done
+    '';
+  });
 
   # Tests try to invoke external process and process == 1.4
   grakn = dontCheck (doJailbreak super.grakn);
@@ -1044,6 +1052,8 @@ self: super: {
   # https://github.com/dmwit/encoding/pull/3
   encoding = appendPatch super.encoding ./patches/encoding-Cabal-2.0.patch;
 
+  clock = dontCheck (appendPatch super.clock ./patches/clock-0.7.2.patch);
+
   # Work around overspecified constraint on github ==0.18.
   github-backup = doJailbreak super.github-backup;
 
@@ -1192,15 +1202,10 @@ self: super: {
     sha256 = "1qwy8bj6vywhp0075dza8j90zrzsm3144qz3c703s9c4n6pg3gw4";
     });
 
-  # These patches contain fixes for 8.6 that should be safe for
-  # earlier versions, but we need the relaxed version bounds in GHC
-  # 8.4 builds. beam needs to release a round of updates that relax
-  # bounds and include the 8.6 fixes:
-  # https://github.com/tathougies/beam/issues/315
-  beam-core = appendPatch super.beam-core ./patches/beam-core-fix-ghc-8.6.x-build.patch;
-  beam-migrate = appendPatch super.beam-migrate ./patches/beam-migrate-fix-ghc-8.6.x-build.patch;
-  beam-postgres = appendPatch super.beam-postgres ./patches/beam-postgres-fix-ghc-8.6.x-build.patch;
-  beam-sqlite = appendPatch super.beam-sqlite ./patches/beam-sqlite-fix-ghc-8.6.x-build.patch;
+  # Requires pg_ctl command during tests
+  beam-postgres = overrideCabal super.beam-postgres (drv: {
+    testToolDepends = (drv.testToolDepends or []) ++ [pkgs.postgresql];
+    });
 
   # https://github.com/sighingnow/computations/pull/1
   primesieve = appendPatch super.primesieve (pkgs.fetchpatch {
@@ -1217,10 +1222,18 @@ self: super: {
     })];
   });
 
+  # Remove unecessary constraint:
+  # https://github.com/agrafix/superbuffer/pull/2
+  superbuffer = overrideCabal super.superbuffer (drv: {
+    postPatch = ''
+      sed -i 's#QuickCheck < 2.10#QuickCheck < 2.13#' superbuffer.cabal
+    '';
+  });
+
   # Use latest pandoc despite what LTS says.
   # Test suite fails in both 2.5 and 2.6: https://github.com/jgm/pandoc/issues/5309.
-  pandoc = doDistribute super.pandoc_2_7_1;
-  pandoc-citeproc = doDistribute super.pandoc-citeproc_0_16_1_3;
+  pandoc = doDistribute super.pandoc_2_7_2;
+  pandoc-citeproc = doDistribute super.pandoc-citeproc_0_16_2;
 
   # https://github.com/qfpl/tasty-hedgehog/issues/24
   tasty-hedgehog = dontCheck super.tasty-hedgehog;
@@ -1239,5 +1252,14 @@ self: super: {
 
   # Fix build with attr-2.4.48 (see #53716)
   xattr = appendPatch super.xattr ./patches/xattr-fix-build.patch;
+
+  # Break out of pandoc >=2.0 && <2.7 (https://github.com/pbrisbin/yesod-markdown/pull/65)
+  yesod-markdown = doJailbreak super.yesod-markdown;
+
+  # These packages needs network 3.x, which is not in LTS-13.x.
+  network-bsd = super.network-bsd.override { network = self.network_3_0_1_1; };
+  lambdabot-core = super.lambdabot-core.overrideScope (self: super: { network = self.network_3_0_1_1; hslogger = self.hslogger_1_3_0_0; });
+  lambdabot-reference-plugins = super.lambdabot-reference-plugins.overrideScope (self: super: { network = self.network_3_0_1_1; hslogger = self.hslogger_1_3_0_0; });
+  lambdabot-haskell-plugins = super.lambdabot-haskell-plugins.overrideScope (self: super: { network = self.network_3_0_1_1; socks = self.socks_0_6_0; connection = self.connection_0_3_0; haskell-src-exts = self.haskell-src-exts_1_21_0; });
 
 } // import ./configuration-tensorflow.nix {inherit pkgs haskellLib;} self super
